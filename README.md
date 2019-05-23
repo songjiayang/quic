@@ -12,7 +12,7 @@
   <br>
   <a href="https://travis-ci.org/pion/quic"><img src="https://travis-ci.org/pion/quic.svg?branch=master" alt="Build Status"></a>
   <a href="https://godoc.org/github.com/pion/quic"><img src="https://godoc.org/github.com/pion/quic?status.svg" alt="GoDoc"></a>
-  <a href="https://coveralls.io/github/pion/quic"><img src="https://coveralls.io/repos/github/pion/quic/badge.svg" alt="Coverage Status"></a>
+  <a href="https://codecov.io/gh/pion/quic"><img src="https://codecov.io/gh/pion/quic/branch/master/graph/badge.svg" alt="Coverage Status"></a>
   <a href="https://goreportcard.com/report/github.com/pion/quic"><img src="https://goreportcard.com/badge/github.com/pion/quic" alt="Go Report Card"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
 </p>
