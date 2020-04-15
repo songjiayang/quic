@@ -3,6 +3,8 @@
 package quic
 
 import (
+	"net"
+
 	"github.com/pion/logging"
 	"github.com/pion/quic/internal/wrapper"
 )
@@ -28,6 +30,49 @@ func NewTransport(url string, config *Config) (*Transport, error) {
 
 	t := &Transport{}
 	t.TransportBase.log = config.LoggerFactory.NewLogger("quic")
+	return t, t.TransportBase.startBase(s)
+}
+
+// NewTransportWithConn creates a new Transport with conn params
+func NewTransportWithConn(conn net.PacketConn, addr net.Addr, config *Config) (*Transport, error) {
+	if config.LoggerFactory == nil {
+		config.LoggerFactory = logging.NewDefaultLoggerFactory()
+	}
+
+	cfg := config.clone()
+	cfg.SkipVerify = true // Using self signed certificates for now
+
+	s, err := wrapper.DialWithConn(conn, addr, cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	t := &Transport{}
+	t.TransportBase.log = config.LoggerFactory.NewLogger("quic")
+	return t, t.TransportBase.startBase(s)
+}
+
+func NewServerWithConn(conn net.PacketConn, config *Config) (*Transport, error) {
+	loggerFactory := config.LoggerFactory
+	if loggerFactory == nil {
+		loggerFactory = logging.NewDefaultLoggerFactory()
+	}
+
+	cfg := config.clone()
+	cfg.SkipVerify = true // Using self signed certificates for now
+
+	l, err := wrapper.ListenWithConn(conn, cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	s, err := l.Accept()
+	if err != nil {
+		return nil, err
+	}
+
+	t := &Transport{}
+	t.TransportBase.log = loggerFactory.NewLogger("quic")
 	return t, t.TransportBase.startBase(s)
 }
 

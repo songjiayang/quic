@@ -51,6 +51,16 @@ func Dial(addr string, config *Config) (*Session, error) {
 	return &Session{s: s}, nil
 }
 
+// DialWithConn dials the conn over quic
+func DialWithConn(conn net.PacketConn, addr net.Addr, config *Config) (*Session, error) {
+	tlscfg := getTLSConfig(config)
+	s, err := quic.Dial(conn, addr, addr.String(), tlscfg, getDefaultQuicConfig())
+	if err != nil {
+		return nil, err
+	}
+	return &Session{s: s}, nil
+}
+
 // Server creates a listener for listens for incoming QUIC sessions
 func Server(conn net.Conn, config *Config) (*Listener, error) {
 	tlscfg := getTLSConfig(config)
@@ -65,6 +75,15 @@ func Server(conn net.Conn, config *Config) (*Listener, error) {
 func Listen(addr string, config *Config) (*Listener, error) {
 	tlscfg := getTLSConfig(config)
 	l, err := quic.ListenAddr(addr, tlscfg, getDefaultQuicConfig())
+	if err != nil {
+		return nil, err
+	}
+	return &Listener{l: l}, nil
+}
+
+// ListenWithConn listens on the conn over quic
+func ListenWithConn(conn net.PacketConn, config *Config) (*Listener, error) {
+	l, err := quic.Listen(conn, getTLSConfig(config), getDefaultQuicConfig())
 	if err != nil {
 		return nil, err
 	}

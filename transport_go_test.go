@@ -11,6 +11,7 @@ import (
 	"crypto/x509/pkix"
 	"encoding/hex"
 	"math/big"
+	"net"
 	"testing"
 	"time"
 
@@ -62,6 +63,99 @@ func TestTransport_E2E(t *testing.T) {
 	}()
 
 	ta, err := NewTransport(url, cfgA)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	stream, err := ta.CreateBidirectionalStream()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	go readLoop(stream) // Read to pull incoming messages
+
+	// Write to open stream
+	data := StreamWriteParameters{
+		Data: []byte("Hello"),
+	}
+	err = stream.Write(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = <-srvErr
+	if err != nil {
+		t.Fatal(err)
+	}
+	<-awaitSetup
+
+	err = ta.Stop(TransportStopInfo{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = tb.Stop(TransportStopInfo{})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestTransport_E2E_WithConn(t *testing.T) {
+	// Limit runtime in case of deadlocks
+	lim := test.TimeOut(time.Second * 20)
+	defer lim.Stop()
+
+	// TODO: Check how we can make sure quic-go closes without leaking
+	// report := test.CheckRoutines(t)
+	// defer report()
+
+	url := "localhost:50001"
+
+	cert, key, err := GenerateSelfSigned()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cfgA := &Config{Certificate: cert, PrivateKey: key}
+
+	cert, key, err = GenerateSelfSigned()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cfgB := &Config{Certificate: cert, PrivateKey: key}
+
+	srvErr := make(chan error)
+	awaitSetup := make(chan struct{})
+
+	var tb *Transport
+	go func() {
+		l, err := net.ListenPacket("udp", url)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var sErr error
+		tb, sErr = NewServerWithConn(l, cfgB)
+		if sErr != nil {
+			srvErr <- sErr
+		}
+
+		tb.OnBidirectionalStream(func(stream *BidirectionalStream) {
+			go readLoop(stream) // Read to pull incoming messages
+
+			close(awaitSetup)
+		})
+		close(srvErr)
+	}()
+
+	udpConn, err := net.ListenUDP("udp", &net.UDPAddr{IP: net.IPv4zero, Port: 0})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	udpAddr, err := net.ResolveUDPAddr("udp", url)
+
+	ta, err := NewTransportWithConn(udpConn, udpAddr, cfgA)
 	if err != nil {
 		t.Fatal(err)
 	}
