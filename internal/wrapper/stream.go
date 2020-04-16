@@ -1,6 +1,8 @@
 package wrapper
 
 import (
+	"io"
+
 	quic "github.com/lucas-clemente/quic-go"
 )
 
@@ -17,7 +19,13 @@ func (s *Stream) Read(p []byte) (int, error) {
 // ReadQuic reads a frame and determines if it is the final frame
 func (s *Stream) ReadQuic(p []byte) (int, bool, error) {
 	n, err := s.s.Read(p)
-	fin := false // TODO determine if closed
+
+	// check EOF error
+	fin := false
+	if err == io.EOF {
+		fin = true
+	}
+
 	return n, fin, err
 }
 
@@ -28,7 +36,17 @@ func (s *Stream) Write(p []byte, fin bool) (int, error) {
 
 // WriteQuic writes a frame and closes the stream if fin is true
 func (s *Stream) WriteQuic(p []byte, fin bool) (int, error) {
-	return s.s.Write(p) // TODO close stream
+	n, err := s.s.Write(p) // TODO close stream
+	if err != nil {
+		return n, err
+	}
+
+	// if fin is true, auto close stream
+	if fin {
+		err = s.Close()
+	}
+
+	return n, err
 }
 
 // StreamID returns the ID of the QuicStream
